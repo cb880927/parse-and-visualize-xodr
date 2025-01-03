@@ -2,7 +2,6 @@
 
 """
 
-
 import os
 
 from lxml import etree
@@ -11,9 +10,11 @@ from tqdm import tqdm
 from opendriveparser import parse_opendrive
 from math import pi, sin, cos
 
-
 # Prepare the input file.
-XODR_FILE = "data/test.xodr"
+# XODR_FILE = "data/test.xodr"
+# XODR_FILE = "data/scene.xodr"
+XODR_FILE = "data/Export.xodr"
+
 
 
 def to_color(r, g, b):
@@ -47,8 +48,8 @@ COLOR_CENTER_LANE = "#FFC500"
 COLOR_REFERECE_LINE = "#0000EE"
 
 # Prepare sample step.
-STEP = 0.1
-
+# STEP = 0.1
+STEP = 2
 
 def load_xodr_and_parse(file=XODR_FILE):
     """
@@ -78,9 +79,10 @@ def calculate_reference_points_of_one_geometry(geometry, length, step=0.01):
         pos_, tangent_ = geometry.calcPosition(s_)
         x, y = pos_
         one_point = {
-            "position": (x, y),     # The location of the reference point
-            "tangent": tangent_,    # Orientation of the reference point
-            "s_geometry": s_,       # The distance between the start point of the geometry and current point along the reference line
+            "position": (x, y),  # The location of the reference point
+            "tangent": tangent_,  # Orientation of the reference point
+            "s_geometry": s_,
+            # The distance between the start point of the geometry and current point along the reference line
         }
         res.append(one_point)
     return res
@@ -95,7 +97,7 @@ def get_geometry_length(geometry):
     if hasattr(geometry, "length"):
         length = geometry.length
     elif hasattr(geometry, "_length"):
-        length = geometry._length           # Some geometry has the attribute "_length".
+        length = geometry._length  # Some geometry has the attribute "_length".
     else:
         raise AttributeError("No attribute length found!!!")
     return length
@@ -122,7 +124,7 @@ def get_all_reference_points_of_one_road(geometries, step=0.01):
 
         # As for every reference points, add the distance start by road and its geometry index.
         pos_tangent_s_s_list = [{**point,
-                                 "s_road": point["s_geometry"]+s_start_road,
+                                 "s_road": point["s_geometry"] + s_start_road,
                                  "index_geometry": geometry_id}
                                 for point in pos_tangent_s_list]
         reference_points.extend(pos_tangent_s_s_list)
@@ -148,14 +150,13 @@ def get_width(widths, s):
 
 
 def get_lane_offset(lane_offsets, section_s, length=float("inf")):
-
     assert isinstance(lane_offsets, list), TypeError(type(lane_offsets))
     if not lane_offsets:
         return 0
     lane_offsets.sort(key=lambda x: x.sPos)
     current_offset = 0
     EPS = 1e-5
-    milestones = [lane_offset.sPos for lane_offset in lane_offsets] + [length+EPS]
+    milestones = [lane_offset.sPos for lane_offset in lane_offsets] + [length + EPS]
 
     control_mini_section = [(start, end) for (start, end) in zip(milestones[:-1], milestones[1:])]
     for offset_params, start_end in zip(lane_offsets, control_mini_section):
@@ -181,7 +182,7 @@ class LaneOffsetCalculate:
         self.lane_offsets_dict = lane_offsets_dict
 
     def calculate_offset(self, s):
-        for s_start, (a, b, c, d) in reversed(self.lane_offsets_dict.items()): # e.g. 75, 25
+        for s_start, (a, b, c, d) in reversed(self.lane_offsets_dict.items()):  # e.g. 75, 25
             if s >= s_start:
                 ds = s - s_start
                 offset = a + b * ds + c * ds ** 2 + d * ds ** 3
@@ -195,7 +196,6 @@ def calculate_area_of_one_left_lane(left_lane, points, most_left_points):
     widths = left_lane.widths
     update_points = []
     for reference_point, inner_point in zip(points, inner_points):
-
         tangent = reference_point["tangent"]
         s_lane_section = reference_point["s_lane_section"]
         lane_width = get_width(widths, s_lane_section)
@@ -226,7 +226,6 @@ def calculate_area_of_one_right_lane(right_lane, points, most_right_points):
     widths = right_lane.widths
     update_points = []
     for reference_point, inner_point in zip(points, inner_points):
-
         tangent = reference_point["tangent"]
         s_lane_section = reference_point["s_lane_section"]
         lane_width = get_width(widths, s_lane_section)
@@ -293,7 +292,7 @@ def calculate_points_of_reference_line_of_one_section(points):
     res = []
     for point in points:
         tangent = point["tangent"]
-        x, y = point["position"]    # Points on reference line.
+        x, y = point["position"]  # Points on reference line.
         normal = tangent + pi / 2
         lane_offset = point["lane_offset"]  # Offset of center lane.
 
@@ -309,7 +308,6 @@ def calculate_points_of_reference_line_of_one_section(points):
 
 
 def calculate_s_lane_section(reference_points, lane_sections):
-
     res = []
     for point in reference_points:
 
@@ -394,12 +392,12 @@ def get_lane_area_of_one_road(road, step=0.01):
     lane_offsets = road.lanes.laneOffsets
     lane_offset_calculate = LaneOffsetCalculate(lane_offsets=lane_offsets)
     lane_sections = road.lanes.laneSections
-    lane_sections = list(sorted(lane_sections, key=lambda x: x.sPos))   # Sort the lane sections by start position.
+    lane_sections = list(sorted(lane_sections, key=lambda x: x.sPos))  # Sort the lane sections by start position.
 
     reference_points = get_all_reference_points_of_one_road(geometries, step=step)  # Extract the reference points.
 
     # Calculate the offsets of center lane.
-    reference_points = [{**point, "lane_offset":  lane_offset_calculate.calculate_offset(point["s_road"])}
+    reference_points = [{**point, "lane_offset": lane_offset_calculate.calculate_offset(point["s_road"])}
                         for point in reference_points]
 
     # Calculate the points of center lane based on reference points and offsets.
@@ -511,6 +509,7 @@ def plot_planes_of_roads(total_areas, save_folder):
     all_types = set()
 
     # Plot lane area.
+    """
     for k, v in tqdm(total_areas.items(), desc="Ploting Roads"):
         left_lanes_area = v["left_lanes_area"]
         right_lanes_area = v["right_lanes_area"]
@@ -543,7 +542,7 @@ def plot_planes_of_roads(total_areas, save_folder):
             ys = [i for _, i in points_of_one_road]
             plt.fill(xs, ys, color=lane_color, label=type_of_lane)
             plt.scatter(xs[::area_select], ys[::area_select], color=rescale_color(lane_color, 0.5), s=1)
-
+    """
     # Plot boundaries
     for k, v in tqdm(total_areas.items(), desc="Ploting Edges"):
         left_lanes_area = v["left_lanes_area"]
@@ -559,6 +558,8 @@ def plot_planes_of_roads(total_areas, save_folder):
             points_of_one_road = inner_points + outer_points[::-1]
             xs = [i for i, _ in points_of_one_road]
             ys = [i for _, i in points_of_one_road]
+            plt.plot(xs,ys)
+            plt.show()
             plt.scatter(xs[::area_select], ys[::area_select], color=rescale_color(lane_color, 0.5), s=1)
 
         for right_lane_id, right_lane_area in right_lanes_area.items():
@@ -573,6 +574,7 @@ def plot_planes_of_roads(total_areas, save_folder):
             plt.scatter(xs[::area_select], ys[::area_select], color=rescale_color(lane_color, 0.5), s=1)
 
     # Plot center lane and reference line.
+    """
     saved_ceter_lanes = dict()
     for k, v in tqdm(total_areas.items(), desc="Ploting Reference and center"):
 
@@ -590,7 +592,7 @@ def plot_planes_of_roads(total_areas, save_folder):
         saved_ceter_lanes[k] = position_center_lane
         plt.scatter(position_reference_points_xs, position_reference_points_ys, color=COLOR_REFERECE_LINE, s=3)
         plt.scatter(position_center_lane_xs, position_center_lane_ys, color=COLOR_CENTER_LANE, s=2)
-
+    """
     import matplotlib.pyplot as plt
     from matplotlib.patches import Patch
 
@@ -606,10 +608,11 @@ def plot_planes_of_roads(total_areas, save_folder):
         "reference_line": Patch(facecolor=COLOR_REFERECE_LINE, edgecolor=COLOR_REFERECE_LINE, alpha=1.0),
     })
 
-    plt.legend(handles=legend_dict.values(), labels=legend_dict.keys(), fontsize=50)
+    plt.legend(handles=legend_dict.values(), labels=legend_dict.keys(), fontsize=10)
     plt.xlabel("x")
     plt.ylabel("y")
     plt.axis("equal")
+    plt.show()
 
     os.makedirs(save_folder, exist_ok=True)
     save_pdf_file = os.path.join(save_folder, "lanes.pdf")

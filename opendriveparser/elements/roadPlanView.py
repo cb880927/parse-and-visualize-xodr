@@ -2,6 +2,7 @@
 import abc
 import numpy as np
 from eulerspiral import eulerspiral
+from eulerlib import *
 
 
 class PlanView(object):
@@ -10,16 +11,16 @@ class PlanView(object):
         self._geometries = []
 
     def addLine(self, startPosition, heading, length):
-        self._geometries.append(Line(startPosition, heading, length))
+        self._geometries.append(Line(startPosition, heading, length,lineType="line"))
 
     def addSpiral(self, startPosition, heading, length, curvStart, curvEnd):
-        self._geometries.append(Spiral(startPosition, heading, length, curvStart, curvEnd))
+        self._geometries.append(Spiral(startPosition, heading, length, curvStart, curvEnd,lineType="spiral"))
 
     def addArc(self, startPosition, heading, length, curvature):
-        self._geometries.append(Arc(startPosition, heading, length, curvature))
+        self._geometries.append(Arc(startPosition, heading, length, curvature,lineType="arc"))
 
     def addParamPoly3(self, startPosition, heading, length, aU, bU, cU, dU, aV, bV, cV, dV, pRange):
-        self._geometries.append(ParamPoly3(startPosition, heading, length, aU, bU, cU, dU, aV, bV, cV, dV, pRange))
+        self._geometries.append(ParamPoly3(startPosition, heading, length, aU, bU, cU, dU, aV, bV, cV, dV, pRange,lineType="paramPoly3"))
 
     def getLength(self):
         """ Get length of whole plan view """
@@ -62,10 +63,11 @@ class Geometry(object):
 
 class Line(Geometry):
 
-    def __init__(self, startPosition, heading, length):
+    def __init__(self, startPosition, heading, length,lineType="line"):
         self.startPosition = np.array(startPosition)
         self.heading = heading
         self.length = length
+        self.lineType = lineType
 
     def getStartPosition(self):
         return self.startPosition
@@ -81,11 +83,12 @@ class Line(Geometry):
 
 class Arc(Geometry):
 
-    def __init__(self, startPosition, heading, length, curvature):
+    def __init__(self, startPosition, heading, length, curvature,lineType="arc"):
         self.startPosition = np.array(startPosition)
         self.heading = heading
         self.length = length
         self.curvature = curvature
+        self.lineType = lineType
 
     def getStartPosition(self):
         return self.startPosition
@@ -110,12 +113,13 @@ class Arc(Geometry):
 
 class Spiral(Geometry):
 
-    def __init__(self, startPosition, heading, length, curvStart, curvEnd):
+    def __init__(self, startPosition, heading, length, curvStart, curvEnd,lineType="spiral"):
         self._startPosition = np.array(startPosition)
         self._heading = heading
         self._length = length
         self._curvStart = curvStart
         self._curvEnd = curvEnd
+        self.lineType = lineType
 
         self._spiral = eulerspiral.EulerSpiral.createFromLengthAndCurvature(self._length, self._curvStart, self._curvEnd)
 
@@ -132,7 +136,7 @@ class Spiral(Geometry):
 
 class Poly3(Geometry):
 
-    def __init__(self, startPosition, heading, length, a, b, c, d):
+    def __init__(self, startPosition, heading, length, a, b, c, d,lineType="poly3"):
         self._startPosition = np.array(startPosition)
         self._heading = heading
         self._length = length
@@ -140,6 +144,7 @@ class Poly3(Geometry):
         self._b = b
         self._c = c
         self._d = d
+        self.lineType = lineType
 
         raise NotImplementedError()
 
@@ -169,7 +174,7 @@ class Poly3(Geometry):
 
 class ParamPoly3(Geometry):
 
-    def __init__(self, startPosition, heading, length, aU, bU, cU, dU, aV, bV, cV, dV, pRange):
+    def __init__(self, startPosition, heading, length, aU, bU, cU, dU, aV, bV, cV, dV, pRange,lineType="paramPoly3"):
         self._startPosition = np.array(startPosition)
         self._heading = heading
         self._length = length
@@ -182,6 +187,7 @@ class ParamPoly3(Geometry):
         self._bV = bV
         self._cV = cV
         self._dV = dV
+        self.lineType = lineType
 
         if pRange is None:
             self._pRange = 1.0
