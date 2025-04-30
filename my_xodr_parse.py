@@ -3,7 +3,7 @@
 """
 
 import os
-from msilib import make_id
+# from msilib import make_id
 
 from lxml import etree
 from tqdm import tqdm
@@ -477,7 +477,7 @@ def get_all_lanes(road_network, step=0.1):
     roads = road_network.roads
     total_areas_all_roads = dict()
 
-    #for road in tqdm(roads, desc="Calculating boundary points."):
+    # for road in tqdm(roads, desc="Calculating boundary points."):
     for road in roads:
         lanes_of_one_road = get_lane_area_of_one_road(road, step=step)
         total_areas_all_roads = {**total_areas_all_roads, **lanes_of_one_road}
@@ -579,7 +579,7 @@ def plot_planes_of_roads(total_areas, save_folder):
             plt.scatter(xs[::area_select], ys[::area_select], color=rescale_color(lane_color, 0.5), s=1)
     """
     # Plot boundaries
-    #for k, v in tqdm(total_areas.items(), desc="Ploting Edges"):
+    # for k, v in tqdm(total_areas.items(), desc="Ploting Edges"):
     for k, v in total_areas.items():
         left_lanes_area = v["left_lanes_area"]
         right_lanes_area = v["right_lanes_area"]
@@ -688,6 +688,7 @@ def plot_planes_of_roads(total_areas, save_folder):
     plt.savefig(save_pdf_file)
     """
 
+
 def process_one_file(file, step=0.1):
     """
     Load one .xodr file and calculate the railing positions with other important messages.
@@ -715,9 +716,9 @@ def save_lane_data_to_file(total_areas, save_folder):
     Save the lane data to file.
     :param total_areas:
     """
-    #import json
+    # import json
     # save_file = os.path.join(save_folder, "lane_data.csv")
-    save_file = os.path.join("D:\\my_github_learn\\data_test","lane_data.csv")
+    save_file = os.path.join("D:\\my_github_learn\\data_test", "lane_data.csv")
     with open(save_file, "w") as file:
         file.write("road_id,lane_id,start_point_x,start_point_y,end_point_x,end_point_y\n")
         for k, v in total_areas.items():
@@ -735,8 +736,9 @@ def save_lane_data_to_file(total_areas, save_folder):
                 ys_middle = [i for _, i in middle_points]
                 file.write(
                     f"{k[0]}, {right_lane_id}, {xs_middle[0]},{ys_middle[0]},{xs_middle[len(xs_middle) - 1]},{ys_middle[len(xs_middle) - 1]}\n")
-#    file.flush()
+    #    file.flush()
     file.close()
+
 
 def main():
     process_one_file(file=XODR_FILE)

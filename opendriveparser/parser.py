@@ -123,7 +123,10 @@ def parse_opendrive(rootNode):
             newType.sPos = roadType.get("s")
             newType.type = roadType.get("type")
 
-            if roadType.find("speed"):
+#            if roadType.find("speed"):
+            #以下两种写法都行。
+            #if len(roadType.find("speed")) > 0:
+            if roadType.find("speed") is not None:
 
                 newSpeed = RoadTypeSpeed()
 
