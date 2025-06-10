@@ -173,6 +173,8 @@ def parse_osm(osm_file: str) -> Dict[str, Any]:
                 data['ways'].append(entry)
             elif way_type == 'boundary':
                 data['boundaries'].append(entry)
+            elif way_type == 'other':#在厦门的测试地图中，由于没有设置way_type为road还是driving，所以都处理成线，而不是边界。
+                data['ways'].append(entry)
 
     return data
 
@@ -204,14 +206,13 @@ def process_roads(data: Dict[str, Any]) -> List[Dict[str, Any]]:
             'road_type': way['tags'].get('highway', 'unknown'),
             'lanes': way['tags'].get('lanes', 'N/A'),
             'name': way['tags'].get('name', 'unnamed'),
-            'center_lat': center['center_lat'] if center else None,
-            'center_lon': center['center_lon'] if center else None,
+            # 'center_lat': center['center_lat'] if center else None,
+            # 'center_lon': center['center_lon'] if center else None,
             'left_edge': left_edge,
             'right_edge': right_edge,
             'node_count': len(way['coordinates'])
         })
     return processed
-
 
 def save_to_csv(data: List[Dict[str, Any]], output_file: str):
     """保存道路数据到CSV"""
@@ -230,15 +231,14 @@ def save_to_csv(data: List[Dict[str, Any]], output_file: str):
                 road['road_type'],
                 road['lanes'],
                 road['name'],
-                road['center_lat'],
-                road['center_lon'],
+                # road['center_lat'],
+                # road['center_lon'],
                 road['left_edge']['lat'] if road['left_edge'] else '',
                 road['left_edge']['lon'] if road['left_edge'] else '',
                 road['right_edge']['lat'] if road['right_edge'] else '',
                 road['right_edge']['lon'] if road['right_edge'] else '',
                 road['node_count']
             ])
-
 
 def save_to_geojson(data: List[Dict[str, Any]], output_file: str):
     """保存道路中心线和边线到GeoJSON"""
