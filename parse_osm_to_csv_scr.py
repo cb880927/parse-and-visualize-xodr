@@ -4,8 +4,6 @@ import os
 import math
 import numpy as np
 
-from sqlalchemy.sql.operators import from_
-
 
 def parse_osm_file(osm_file_path):
     # 解析XML文件
@@ -19,6 +17,7 @@ def parse_osm_file(osm_file_path):
 
     # 解析所有节点
     for node in root.findall('node'):
+        # 提取单个节点信息，包括ID、动作、经纬度及标签
         node_id = node.get('id')
         action = node.get('action', default='')
         lat = node.get('lat')
@@ -38,6 +37,7 @@ def parse_osm_file(osm_file_path):
 
     # 解析所有路径
     for way in root.findall('way'):
+        # 提取单条路径信息，包括ID、动作、可见性、版本、引用节点及标签
         way_id = way.get('id')
         action = way.get('action', '')
         visible = way.get('visible', '')
@@ -63,6 +63,7 @@ def parse_osm_file(osm_file_path):
 
     # 解析所有关系
     for relation in root.findall('relation'):
+        # 提取单个关系信息，包括ID、动作、可见性、成员及标签
         rel_id = relation.get('id')
         action = relation.get('action', '')
         visible = relation.get('visible', '')
@@ -89,6 +90,7 @@ def parse_osm_file(osm_file_path):
 
 
 def save_to_csv(data, filename):
+    # 将解析的数据保存为CSV文件
     if data:
         df = pd.DataFrame(data)
 
@@ -103,6 +105,7 @@ def save_to_csv(data, filename):
 
 
 def find_nodes_by_id(nodes, node_id):
+    # 根据节点ID查找对应的节点信息
     for node in nodes:
         if node['id'] == node_id:
             return node
@@ -110,13 +113,14 @@ def find_nodes_by_id(nodes, node_id):
 
 
 def find_ways_by_id(ways, way_id):
+    # 根据路径ID查找对应的路径信息
     for way in ways:
         if way['id'] == way_id:
             return way
     return None
 
 
-#  计算箭头线角度
+# 计算箭头线角度
 def calc_arrow_angles(x1, y1, x2, y2, alpha=10):
     # 计算基础角度
     dx = float(x2) - float(x1)
@@ -134,21 +138,15 @@ def calc_arrow_angles(x1, y1, x2, y2, alpha=10):
 
 
 def save_to_scr(nodes, ways, relations):
+    # 将解析结果保存为SCR脚本文件，用于CAD绘制图形
     open_file_nodes = open(r'osm_data_output\nodes.scr', mode='w')
     open_file_ways = open(r'osm_data_output\ways.scr', mode='w')
     open_file_relations = open(r'osm_data_output\relations.scr', mode='w')
 
+    # 过滤已删除的节点
     for node in nodes[:]:  # 遍历列表的副本，把已经删除的点给去掉。
         if node['action'] == 'delete':
             nodes.remove(node)
-
-    # 把所有的点连成线，输出到scr文件中，但是连成的线不连续
-    # for i in range(len(nodes)-1):
-    #     coord_x_1 = nodes[i]['local_x']
-    #     coord_y_1 = nodes[i]['local_y']
-    #     coord_x_2 = nodes[i+1]['local_x']
-    #     coord_y_2 = nodes[i+1]['local_y']
-    #     open_file_nodes.write(f"line {coord_x_1},{coord_y_1} {coord_x_2},{coord_y_2} \n")
 
     # 画点，用圆形,蓝色
     open_file_nodes.write(f"color 5\n")
@@ -157,12 +155,10 @@ def save_to_scr(nodes, ways, relations):
         coord_y = node['local_y']
         open_file_nodes.write(f"circle {coord_x},{coord_y} 0.2 \n")
 
+    # 过滤已删除的路径
     for way in ways[:]:  # 遍历列表的副本，把已经删除的边给去掉。
         if way['action'] == 'delete' or int(way['id']) < 0:
             ways.remove(way)
-        # # 判断id为负数的，跳过，看了一下，负数的都是被修改过覆盖的数据。
-        # if int(way['id']) < 0:
-        #     continue
 
     # 画线，白色
     open_file_ways.write(f"color 7\n")
@@ -183,6 +179,7 @@ def save_to_scr(nodes, ways, relations):
                 angle1, angle2 = calc_arrow_angles(coord_x_1, coord_y_1, coord_x_2, coord_y_2)
                 open_file_ways.write(f"line {coord_x_2},{coord_y_2} @0.5<{angle1} \n")
                 open_file_ways.write(f"line {coord_x_2},{coord_y_2} @0.5<{angle2} \n")
+
     # 绘制车道流向
     open_file_relations.write(f"color 10\n")
     for relation in relations[:]:
@@ -190,8 +187,6 @@ def save_to_scr(nodes, ways, relations):
             continue
         from_way = find_ways_by_id(ways, relation['members'].split(";")[0].split("/")[1])
         to_way = find_ways_by_id(ways, relation['members'].split(";")[1].split("/")[1])
-        # from_way_role = relation['members'].split(";")[0][2] # 计算way的role，用以判断方向
-        # to_way_role = relation['members'].split(";")[1][2] # 计算way的role，用以判断方向
 
         if from_way is None or to_way is None:
             continue
@@ -204,8 +199,10 @@ def save_to_scr(nodes, ways, relations):
         from_node_2 = find_nodes_by_id(nodes, from_way['node_refs'].split(",")[1])
         to_node_1 = find_nodes_by_id(nodes, to_way['node_refs'].split(",")[0])
         to_node_2 = find_nodes_by_id(nodes, to_way['node_refs'].split(",")[1])
-        from_vector = [float(from_node_2['local_x']) - float(from_node_1['local_x']), float(from_node_2['local_y']) - float(from_node_1['local_y'])]
-        to_vector = [float(to_node_2['local_x']) - float(to_node_1['local_x']), float(to_node_2['local_y']) - float(to_node_1['local_y'])]
+        from_vector = [float(from_node_2['local_x']) - float(from_node_1['local_x']),
+                       float(from_node_2['local_y']) - float(from_node_1['local_y'])]
+        to_vector = [float(to_node_2['local_x']) - float(to_node_1['local_x']),
+                     float(to_node_2['local_y']) - float(to_node_1['local_y'])]
 
         # 车道流向是和role为left的way的点一致的。
         if (from_vector[0] * to_vector[0] + from_vector[1] * to_vector[1]) < 0:  # 判断两个向量的叉积是否为正，如果为正，则两个向量方向一致。
@@ -236,31 +233,6 @@ def save_to_scr(nodes, ways, relations):
                 open_file_relations.write(
                     f"line {(coord_x_1 + coord_x_2) / 2},{(coord_y_1 + coord_y_2) / 2} @0.5<{angle2} \n")
 
-        # 判断lane中两个way中点的方向是否一致。
-        # 分别取两个way中第一个点和way中第二个点，利用叉积判断方向是否一致。
-
-    '''
-    open_file_relations.write(f"color 10\n")
-    for relation in relations[:]:  # 遍历列表的副本，把已经删除的边给去掉。
-        if relation['action'] == 'delete':
-            continue
-        from_way = find_ways_by_id(ways,relation['members'].split(";")[0].split("/")[1])
-        to_way = find_ways_by_id(ways,relation['members'].split(";")[1].split("/")[1])
-        if from_way is None or to_way is None:
-            continue
-        from_node = find_nodes_by_id(nodes,from_way['node_refs'].split(",")[-1])
-        to_node = find_nodes_by_id(nodes,to_way['node_refs'].split(",")[0])
-        
-        coord_x_1 = from_node['local_x']
-        coord_x_2 = to_node['local_x']
-        coord_y_1 = from_node['local_y']
-        coord_y_2 = to_node['local_y']
-        # 计算箭头线角度
-        angle1, angle2 = calc_arrow_angles(coord_x_1, coord_y_1, coord_x_2, coord_y_2)
-        open_file_relations.write(f"line {coord_x_1},{coord_y_1} {coord_x_2},{coord_y_2} \n")
-        open_file_relations.write(f"line {coord_x_2},{coord_y_2} @0.5<{angle1} \n")
-        open_file_relations.write(f"line {coord_x_2},{coord_y_2} @0.5<{angle2} \n")
-    '''
     open_file_nodes.flush()
     open_file_nodes.close()
 
@@ -270,7 +242,9 @@ def save_to_scr(nodes, ways, relations):
     open_file_relations.flush()
     open_file_relations.close()
 
+
 def get_ways_links(nodes, ways, relations):
+    # 获取路径之间的连接关系，用于表示道路之间的连接
     links = []
     for lane_1 in relations:
         #  获取关系转向方向，默认为straight，需要过滤
@@ -285,7 +259,7 @@ def get_ways_links(nodes, ways, relations):
         # 遍历所有lane，获取相连的lane
         # 获取关系成员，这一项没有空值，不需要过滤
         members = lane_1['members'].split(";")
-        # 这个地方直接写死，应该就第一个member和第二个member是way属性，后续的都不是，得出的结果是member = [['1000','left'],['1001','right']]
+        # 第一个member和第二个member是way属性，后续的都不是，得出的结果是member = [['1000','left'],['1001','right']]
         member_lane_1 = [[member.split("/")[1], member.split("/")[2]] for member in members if
                          member.split("/")[0] == 'way']
         for lane_2 in relations:
@@ -326,8 +300,6 @@ def get_ways_links(nodes, ways, relations):
 
 
 def main(osm_file_path):
-    calc_arrow_angles(10, 0, 0, 0, alpha=10)
-    calc_arrow_angles(37, 12, 37, 16, alpha=10)
     # 创建输出目录
     output_dir = "osm_data_output"
     os.makedirs(output_dir, exist_ok=True)
@@ -355,119 +327,3 @@ def main(osm_file_path):
 if __name__ == "__main__":
     input_file = r"D:\移动的C盘的桌面文件\nanhui0519.osm"  # 替换为你的OSM文件路径
     main(input_file)
-
-# 以下是deepseek给的原版代码，保存一下。
-"""
-def parse_osm_file(osm_file_path):
-    # 解析XML文件
-    tree = ET.parse(osm_file_path)
-    root = tree.getroot()
-
-    # 存储数据的容器
-    nodes = []
-    ways = []
-    relations = []
-
-    # 解析所有节点
-    for node in root.findall('node'):
-        node_id = node.get('id')
-        lat = node.get('lat')
-        lon = node.get('lon')
-        tags = {}
-
-        for tag in node.findall('tag'):
-            tags[tag.get('k')] = tag.get('v')
-
-        nodes.append({
-            'id': node_id,
-            'lat': lat,
-            'lon': lon,
-            **tags
-        })
-
-    # 解析所有路径
-    for way in root.findall('way'):
-        way_id = way.get('id')
-        action = way.get('action', '')
-        visible = way.get('visible', '')
-        version = way.get('version', '')
-
-        # 获取节点引用
-        node_refs = [nd.get('ref') for nd in way.findall('nd')]
-
-        # 获取标签
-        tags = {}
-        for tag in way.findall('tag'):
-            tags[tag.get('k')] = tag.get('v')
-
-        ways.append({
-            'id': way_id,
-            'action': action,
-            'visible': visible,
-            'version': version,
-            'node_refs': ','.join(node_refs),
-            'node_count': len(node_refs),
-            **tags
-        })
-
-    # 解析所有关系
-    for relation in root.findall('relation'):
-        rel_id = relation.get('id')
-        action = relation.get('action', '')
-        visible = relation.get('visible', '')
-
-        # 获取成员
-        members = []
-        for member in relation.findall('member'):
-            members.append(f"{member.get('type')}/{member.get('ref')}/{member.get('role')}")
-
-        # 获取标签
-        tags = {}
-        for tag in relation.findall('tag'):
-            tags[tag.get('k')] = tag.get('v')
-
-        relations.append({
-            'id': rel_id,
-            'action': action,
-            'visible': visible,
-            'members': ';'.join(members),
-            **tags
-        })
-
-    return nodes, ways, relations
-
-
-def save_to_csv(data, filename):
-    if data:
-        df = pd.DataFrame(data)
-        df.to_csv(filename, index=False)
-        print(f"Saved {len(df)} records to {filename}")
-    else:
-        print(f"No data to save for {filename}")
-
-
-def main(osm_file_path):
-    # 创建输出目录
-    output_dir = "osm_data_output"
-    os.makedirs(output_dir, exist_ok=True)
-
-    # 解析OSM文件
-    nodes, ways, relations = parse_osm_file(osm_file_path)
-
-    # 保存到CSV
-    save_to_csv(nodes, os.path.join(output_dir, "nodes.csv"))
-    save_to_csv(ways, os.path.join(output_dir, "ways.csv"))
-    save_to_csv(relations, os.path.join(output_dir, "relations.csv"))
-
-    # 打印摘要信息
-    print("\nExtraction Summary:")
-    print(f"Nodes: {len(nodes)}")
-    print(f"Ways: {len(ways)}")
-    print(f"Relations: {len(relations)}")
-    print(f"\nOutput files saved in: {os.path.abspath(output_dir)}")
-
-
-if __name__ == "__main__":
-    input_file = r"D:\移动的C盘的桌面文件\nanhui0519.osm"  # 替换为你的OSM文件路径
-    main(input_file)
-"""
